@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { products } from './data';
 import './App.css';
 
 function App() {
   // --- STATE ---
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState([]); // Now stores items with a 'quantity' property
   const [currentView, setCurrentView] = useState('shop');
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -11,6 +12,37 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState('');
   const [formData, setFormData] = useState({ name: '', address: '', city: '', zip: '' });
+
+  // Fetch products from DummyJSON API
+  useEffect(() => {
+    fetch('https://dummyjson.com/products?limit=0')
+      .then(res => res.json())
+      .then(data => {
+        const mappedProducts = data.products.map(p => ({
+          id: p.id,
+          name: p.title,
+          price: p.price,
+          category: p.category,
+          rating: p.rating,
+          discountBadge: p.discountPercentage > 10 ? Math.round(p.discountPercentage) : null,
+          reviews: p.reviews ? p.reviews.length : Math.floor(Math.random() * 200) + 10,
+          image: p.thumbnail || (p.images && p.images[0]),
+          description: p.description,
+          features: [
+            p.brand ? `Brand: ${p.brand}` : 'Premium Edition',
+            `Stock: ${p.stock} units available`,
+            `Special: ${p.discountPercentage}% off retail`,
+            'Free standard shipping included'
+          ]
+        }));
+        setProducts(mappedProducts);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch products", err);
+        setLoading(false);
+      });
+  }, []);
 
   // Clear toast after 3 seconds
   useEffect(() => {
@@ -130,16 +162,46 @@ function App() {
               ))}
             </div>
 
-            {filteredProducts.length === 0 ? (
-              <div style={{textAlign: 'center', padding: '64px 0', color: '#6b7280'}}>
+            {loading ? (
+              <div className="products-grid">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="skeleton-card">
+                    <div className="skeleton-image"></div>
+                    <div className="skeleton-info">
+                      <div className="skeleton-text title"></div>
+                      <div className="skeleton-text"></div>
+                      <div className="skeleton-text"></div>
+                      <div className="skeleton-footer">
+                        <div className="skeleton-text price"></div>
+                        <div className="skeleton-button"></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div style={{textAlign: 'center', padding: '64px 0', color: '#64748b'}}>
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '16px', opacity: 0.5}}>
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
                 <h2>No products found matching "{searchQuery}"</h2>
+                <p>Try adjusting your filters or search terms.</p>
               </div>
             ) : (
               <div className="products-grid">
-                {filteredProducts.map((product) => (
-                  <article key={product.id} className="product-card" onClick={() => viewProductDetails(product)}>
+                {filteredProducts.map((product, index) => (
+                  <article 
+                    key={product.id} 
+                    className="product-card fade-in-up" 
+                    style={{animationDelay: `${index * 0.05}s`}}
+                    onClick={() => viewProductDetails(product)}
+                  >
                     <div className="category-badge">{product.category}</div>
-                    <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
+                    {product.discountBadge && <div className="discount-badge">{product.discountBadge}% OFF</div>}
+                    <div className="image-container">
+                      <img src={product.image} alt={product.name} className="product-image" loading="lazy" />
+                    </div>
                     
                     <div className="product-info">
                       <h2>{product.name}</h2>
